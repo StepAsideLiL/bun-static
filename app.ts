@@ -1,7 +1,7 @@
 import { micromark } from "micromark";
 import { rm } from "node:fs/promises";
-import { mkdir, readdir, stat, readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { mkdir, readdir, stat, readFile, writeFile } from "node:fs/promises";
+import { resolve, sep, dirname } from "node:path";
 
 const CWD = process.cwd();
 const SITE_DIR = resolve(CWD, "site");
@@ -28,32 +28,39 @@ async function main() {
 }
 
 async function build() {
-  const dirName = ".build";
-  const buildDir = resolve(CWD, dirName);
+  const buildDirName = ".build";
+  const buildDirPath = resolve(CWD, buildDirName);
 
-  await readdir(buildDir)
+  await readdir(buildDirPath)
     .then(async () => {
-      await cleanUpBuildDir(buildDir)
-        .then(() => {
-          transpile(SITE_DIR);
+      await cleanUpBuildDir(buildDirPath)
+        .then(async () => {
+          console.log(`✅ Cleaning up ${buildDirName} dir!`);
+
+          await parsingMarkdownToHTML(SITE_DIR, buildDirPath)
+            .then(() => {
+              console.log(`✅ Markdown parsing completed!`);
+            })
+            .catch(() => {
+              throw new Error(`❌ Markdown parsing failed`);
+            });
         })
         .catch(() => {
-          console.log(`❌ Failed to clean up ${dirName}`);
+          throw new Error(`❌ Failed to clean up ${buildDirName}`);
         });
     })
     .catch(async () => {
-      console.log(`❗ No ${dirName} dir found.`);
-      await mkdir(buildDir)
+      await parsingMarkdownToHTML(SITE_DIR, buildDirPath)
         .then(() => {
-          console.log(`✅ ${dirName} is created!`);
+          console.log(`✅ Markdown parsing completed!`);
         })
         .catch(() => {
-          throw new Error(`❌ Failed to create ${dirName}`);
+          throw new Error(`❌ Markdown parsing failed`);
         });
     });
 }
 
-async function transpile(sourceDir: string) {
+async function parsingMarkdownToHTML(sourceDir: string, buildDir: string) {
   const siteFiles = await readdir(sourceDir);
 
   siteFiles.forEach(async (file) => {
@@ -61,13 +68,19 @@ async function transpile(sourceDir: string) {
 
     const fileState = await stat(filePath);
     if (fileState.isDirectory()) {
-      transpile(filePath);
+      parsingMarkdownToHTML(filePath, buildDir);
     } else {
       const htmlContent = HTML_TEMPLETE.replace(
         "<!-- Body -->",
         micromark(await readFile(filePath, "utf-8")),
       );
-      console.log(htmlContent);
+      const distPath = resolve(
+        buildDir,
+        filePath.replace(`${SITE_DIR}${sep}`, "").replace(".md", ".html"),
+      );
+      await mkdir(dirname(distPath), { recursive: true }).then(async () => {
+        await writeFile(distPath, htmlContent, "utf-8");
+      });
     }
   });
 }
