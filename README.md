@@ -1,15 +1,27 @@
 # bun-static
 
-To install dependencies:
+Build a static site from markdown files.
+
+## Requirements
+
+This project is written in TypeScript without any build-to-JavaScript step. It is done with **[Bun](https://bun.com)**. Install bun from [here](https://bun.com/docs/installation).
+
+Bun is an all-in-one toolkit for developing modern JavaScript/TypeScript applications. It also runs `ts` file directly.
+
+1. Install the dependency:
 
 ```bash
 bun install
 ```
 
-To run:
+2. Run the app:
 
 ```bash
-bun run 
+bun run app.ts
 ```
 
-This project was created using `bun init` in bun v1.3.6. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
+## Project Structure
+
+All the application code is in `app.ts`.
+
+The markdown contents should be in `site` directory. The directory tree in `site` will be used to create the same directory tree in `.build` directory with `.html` files.

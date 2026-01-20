@@ -70,6 +70,10 @@ async function parsingMarkdownToHTML(sourceDir: string, buildDir: string) {
     if (fileState.isDirectory()) {
       parsingMarkdownToHTML(filePath, buildDir);
     } else {
+      /**
+       * TODOs
+       * 1. check for .md file extension.
+       */
       const htmlContent = HTML_TEMPLETE.replace(
         "<!-- Body -->",
         micromark(await readFile(filePath, "utf-8")),
