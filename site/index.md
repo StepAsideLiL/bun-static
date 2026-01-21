@@ -1,3 +1,7 @@
+---
+title: Hello World
+---
+
 # Hello World
 
 New day, isn't it?

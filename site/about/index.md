@@ -1,3 +1,7 @@
+---
+title: About Static Site
+---
+
 # About Static Site
 
 This site is awesome.

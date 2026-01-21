@@ -8,6 +8,8 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "micromark": "^4.0.2"
+    "gray-matter": "^4.0.3",
+    "micromark": "^4.0.2",
+    "micromark-extension-frontmatter": "^2.0.0"
   }
 }
