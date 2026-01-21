@@ -1,5 +1,6 @@
 {
   "name": "bun-static",
+  "type": "module",
   "private": true,
   "devDependencies": {
     "@types/bun": "latest",
