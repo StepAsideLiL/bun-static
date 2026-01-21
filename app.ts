@@ -1,9 +1,24 @@
-import { micromark } from "micromark";
 import { rm } from "node:fs/promises";
 import { mkdir, readdir, stat, readFile, writeFile } from "node:fs/promises";
 import { resolve, sep, dirname } from "node:path";
-import { frontmatter, frontmatterHtml } from "micromark-extension-frontmatter";
-import matter from "gray-matter";
+// import matter from "gray-matter";
+import { unified } from "unified";
+import remarkParse from "remark-parse";
+import remarkRehype from "remark-rehype";
+import rehypeStringify from "rehype-stringify";
+import remarkFrontmatter from "remark-frontmatter";
+import { matter } from "vfile-matter";
+import type { Root } from "mdast";
+import type { VFile } from "vfile";
+import type { Plugin } from "unified";
+
+declare module "vfile" {
+  interface DataMap {
+    matter?: {
+      title?: string;
+    };
+  }
+}
 
 const CWD = process.cwd();
 const SITE_DIR = resolve(CWD, "site");
@@ -65,37 +80,37 @@ async function build() {
 async function parsingMarkdownToHTML(sourceDir: string, buildDir: string) {
   const siteFiles = await readdir(sourceDir);
 
-  siteFiles.forEach(async (file) => {
+  for (const file of siteFiles) {
     const filePath = resolve(sourceDir, file);
-
     const fileState = await stat(filePath);
+
     if (fileState.isDirectory()) {
-      parsingMarkdownToHTML(filePath, buildDir);
-    } else {
-      /**
-       * TODOs
-       * 1. parse markdown with `remark`
-       */
-      if (file.endsWith(".md")) {
-        const markdownContent = await readFile(filePath, "utf-8");
-        const { data } = matter(markdownContent);
-        const htmlContent = HTML_TEMPLETE.replace(
-          "<!-- Body -->",
-          micromark(markdownContent, {
-            extensions: [frontmatter()],
-            htmlExtensions: [frontmatterHtml()],
-          }),
-        ).replace("<!-- Title -->", data.title ? data.title : "<!-- Title -->");
-        const distPath = resolve(
-          buildDir,
-          filePath.replace(`${SITE_DIR}${sep}`, "").replace(".md", ".html"),
-        );
-        await mkdir(dirname(distPath), { recursive: true }).then(async () => {
-          await writeFile(distPath, htmlContent, "utf-8");
-        });
-      }
+      await parsingMarkdownToHTML(filePath, buildDir);
+      continue;
     }
-  });
+
+    if (file.endsWith(".md")) {
+      const markdownContent = await readFile(filePath, "utf-8");
+      const processedHtml = await markdownProcessor(markdownContent);
+
+      const htmlContent = HTML_TEMPLETE.replace(
+        "<!-- Body -->",
+        String(processedHtml),
+      ).replace(
+        "<!-- Title -->",
+        processedHtml?.data?.matter?.title
+          ? processedHtml.data.matter.title
+          : "<!-- Title -->",
+      );
+      const distPath = resolve(
+        buildDir,
+        filePath.replace(`${SITE_DIR}${sep}`, "").replace(".md", ".html"),
+      );
+
+      await mkdir(dirname(distPath), { recursive: true });
+      await writeFile(distPath, htmlContent, "utf-8");
+    }
+  }
 }
 
 async function cleanUpBuildDir(buildDir: string) {
@@ -105,6 +120,22 @@ async function cleanUpBuildDir(buildDir: string) {
       throw new Error(`❌ Failed to remove ${file}`);
     });
   });
+}
+
+function markdownProcessor(markdownContent: string) {
+  const matterPlugin: Plugin<[], Root> = function () {
+    return function (_tree: Root, file: VFile) {
+      matter(file);
+    };
+  };
+
+  return unified()
+    .use(remarkParse)
+    .use(matterPlugin)
+    .use(remarkFrontmatter, ["yaml", "toml"])
+    .use(remarkRehype)
+    .use(rehypeStringify)
+    .process(markdownContent);
 }
 
 await main();
